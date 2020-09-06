@@ -1,8 +1,6 @@
 import tkinter as tk
 import keyboard
 
-import settings
-
 
 class Snipper(object):
     def __init__(self):
@@ -11,24 +9,48 @@ class Snipper(object):
         self.create_widgets()
 
     def create_widgets(self):
-        self.snippets_frame = Snippets_Frame(self)
+        self.snippets_frame = Snippets_Frame(master=self, application=self)
         self.snippets_frame.grid(row=0, column=0)
 
+    def get_snippets_from_file(self, path : str) -> dict:
+        snippets = {}
+        try:
+            f = open(path, "r")
+        except Exception as e:
+            print(e.__traceback__)
+            return
+
+        lines = [line.split(" : ") for line in f.readlines() if not line.isspace()]
+        for snippet in lines:
+            snippets[snippet[0]] = snippet[1].strip("\n")   
+
+        f.close()
+        return snippets  
+
+    def register_snippet(self, abbreviation, template):
+        if abbreviation and template:
+            keyboard.add_abbreviation(abbreviation, template)
+
+    def unregister_snippet(self, abbreviation):
+        if abbreviation:
+            keyboard.remove_word_listener(abbreviation)
+
+    def unregister_all_snippets(self):
+        keyboard.unhook_all()
+
 class Snippets_Frame(tk.LabelFrame):
-    def __init__(self, master, cfg={}, **kw):
+    def __init__(self, master, application, cfg={}, **kw):
         tk.LabelFrame.__init__(self, master, cfg, **kw)
-        self.snippets = settings.snippets
+        self.app = application
         self.abbreviation_entries = []
         self.template_entries = []
     
-        self.create_widgets()
-        self.import_snippets_to_entries()
-        self.register_snippets_from_entries()
-
-    def create_widgets(self):
-        for i in range(len(self.snippets)):
-            self.create_abbreviation_entry()
-            self.create_template_entry()
+        self.display_snippets(snippets=self.app.get_snippets_from_file(path="snippets.txt"))
+        self.register_all_snippets_from_entries()
+    
+    def create_snippet_widgets(self):
+        self.create_abbreviation_entry()
+        self.create_template_entry()
     
     def create_abbreviation_entry(self):
         row = len(self.abbreviation_entries)
@@ -51,7 +73,7 @@ class Snippets_Frame(tk.LabelFrame):
     def on_abbreviation_focusIn(self, event):
         abbreviation_entry = event.widget
         abbreviation_entry.configure(state="normal")
-        keyboard.remove_word_listener(abbreviation_entry.get())
+        self.app.unregister_snippet(abbreviation_entry.get())
 
     def on_abbreviation_focusOut(self, event):
         abbreviation_entry = event.widget
@@ -61,14 +83,14 @@ class Snippets_Frame(tk.LabelFrame):
         abbreviation = abbreviation_entry.get()
         template = self.template_entries[index].get()
 
-        self.register_snippet(abbreviation, template)
+        self.app.register_snippet(abbreviation, template)
 
     def on_template_focusIn(self, event):
         template_entry = event.widget
         template_entry.configure(state="normal")
         index = self.template_entries.index(template_entry)
 
-        keyboard.remove_word_listener(self.abbreviation_entries[index].get())
+        self.app.unregister_snippet(self.abbreviation_entries[index].get())
 
     def on_template_focusOut(self, event):
         template_entry = event.widget
@@ -78,27 +100,22 @@ class Snippets_Frame(tk.LabelFrame):
         abbreviation = self.abbreviation_entries[index].get()
         template = template_entry.get()
 
-        self.register_snippet(abbreviation, template)
+        self.app.register_snippet(abbreviation, template)
 
-    def import_snippets_to_entries(self):
-        for i, abbreviation in enumerate(self.snippets):
+    def display_snippets(self, snippets):
+        for i, abbreviation in enumerate(snippets):
+            self.create_snippet_widgets()
             self.abbreviation_entries[i].textvariable.set(abbreviation)
-            template = self.snippets[abbreviation]
-            self.template_entries[i].textvariable.set(template)
-    
-    def register_snippets_from_entries(self):
+            template = snippets[abbreviation]
+            self.template_entries[i].textvariable.set(template)  
+
+    def register_all_snippets_from_entries(self):
         for i in range(len(self.abbreviation_entries)):
             abbreviation = self.abbreviation_entries[i].get()
             template = self.template_entries[i].get()
             
-            self.register_snippet(abbreviation, template)
+            self.app.register_snippet(abbreviation, template)
 
-    def register_snippet(self, abbreviation, template):
-        if abbreviation and template:
-            keyboard.add_abbreviation(abbreviation, template)
-
-    def unregister_snippets(self):
-        keyboard.unhook_all()
 
 class Snipper_TopLevel(Snipper, tk.Toplevel):
     def __init__(self, master, cnf={}, **kw):
