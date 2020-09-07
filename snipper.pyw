@@ -12,11 +12,24 @@ class Snipper(object):
         self.create_widgets()
 
     def create_widgets(self):
+        self.create_menubar()
+
         self.snippets_manager = Snippets_LabelFrame(master=self, application=self)
         self.snippets_manager.grid(row=0, column=0)
 
         self.layout_manager = LayoutManager_Frame(master=self, snippets_manager=self.snippets_manager)
         self.layout_manager.grid(row=1, column=0)
+
+    def create_menubar(self, master=None, **options) -> tk.Menu:
+        menubar = tk.Menu()
+        filemenu = tk.Menu(menubar, tearoff=0)
+        filemenu.add_command(label="Open")
+        filemenu.add_command(label="Open recent")
+        filemenu.add_command(label="Save")
+        filemenu.add_command(label="Save as...")
+        menubar.add_cascade(label="File", menu=filemenu)
+
+        return menubar
 
     def get_snippets_from_file(self, path : str) -> dict:
         snippets = {}
@@ -222,12 +235,16 @@ class Snipper_TopLevel(Snipper, tk.Toplevel):
         tk.Toplevel.__init__(self, master, cnf, **kw)
         Snipper.__init__(self)
 
+        self.config(menu=self.create_menubar())
         self.resizable(False, False)
 
 class Snipper_Frame(Snipper, tk.Frame):
     def __init__(self, master, cnf={}, **kw):
         tk.Frame.__init__(self, master, cnf, **kw)
         Snipper.__init__(self)
+
+        master.config(menu=self.create_menubar())
+        master.resizable(False, False)
 
 class Snippet_Entry(tk.Entry):
     def __init__(self, master, cfg={}, **kw):
@@ -247,7 +264,6 @@ class Snippet_Entry(tk.Entry):
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.resizable(False, False)
 
     frame = Snipper_Frame(root)
     frame.grid()
