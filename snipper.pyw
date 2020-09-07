@@ -7,7 +7,7 @@ import keyboard
 class Snipper(object):
     def __init__(self):
         self.file_path = "snippets.txt" 
-        self.snippets_frame = None
+        self.snippets_manager = None
 
         self.create_widgets()
 
@@ -15,7 +15,7 @@ class Snipper(object):
         self.snippets_manager = Snippets_LabelFrame(master=self, application=self)
         self.snippets_manager.grid(row=0, column=0)
 
-        self.layout_manager = LayoutManager_Frame(master=self, application=self)
+        self.layout_manager = LayoutManager_Frame(master=self, snippets_manager=self.snippets_manager)
         self.layout_manager.grid(row=1, column=0)
 
     def get_snippets_from_file(self, path : str) -> dict:
@@ -37,8 +37,18 @@ class Snipper(object):
         if abbreviation and template:
             keyboard.add_abbreviation(abbreviation, template)
 
-    def unregister_snippet(self, abbreviation):
-        if abbreviation:
+    def register_all_snippets_from_entries(self):
+        abbreviation_entries = self.get_abbreviation_entries()
+        template_entries = self.get_template_entries()
+
+        for i in range(len(abbreviation_entries)):
+            abbreviation = abbreviation_entries[i].get()
+            template = template_entries[i].get()
+            
+            self.register_snippet(abbreviation, template)
+
+    def unregister_snippet(self, abbreviation, template):
+        if abbreviation and template:
             keyboard.remove_word_listener(abbreviation)
 
     def unregister_all_snippets(self):
@@ -65,13 +75,23 @@ class Snippets_LabelFrame(tk.LabelFrame):
         self.app = application
         self.abbreviation_entries = []
         self.template_entries = []
-    
-        self.display_snippets(snippets=self.app.get_snippets_from_file(path=self.app.file_path))
-        self.register_all_snippets_from_entries()
-    
-    def create_snippet_widgets(self):
+
+        self.add_snippet_widgets()
+        
+    def add_snippet_widgets(self):
         self.create_abbreviation_entry()
         self.create_template_entry()
+    
+    def remove_snippet_widgets(self):
+        if not self.abbreviation_entries or not self.template_entries:
+            return
+
+        abbreviation_entry = self.abbreviation_entries.pop()
+        template_entry = self.template_entries.pop()
+        self.app.unregister_snippet(abbreviation_entry.get(), template_entry.get())
+
+        abbreviation_entry.destroy()
+        template_entry.destroy()
     
     def create_abbreviation_entry(self):
         row = len(self.abbreviation_entries)
@@ -79,13 +99,13 @@ class Snippets_LabelFrame(tk.LabelFrame):
         abbreviation_entry = Snippet_Entry(self, textvariable = tk.StringVar(), state="readonly", width=7, bd=1, justify="center")
         abbreviation_entry.bind('<FocusIn>', self.on_abbreviation_focusIn)
         abbreviation_entry.bind('<FocusOut>', self.on_abbreviation_focusOut)
-        abbreviation_entry.grid(row=row, column=0)
+        abbreviation_entry.grid(row=row, column=0, pady=1)
         self.abbreviation_entries.append(abbreviation_entry)
 
     def create_template_entry(self):
         row = len(self.template_entries)
 
-        template_entry = Snippet_Entry(self, textvariable = tk.StringVar(), state="readonly", width=40, bd=0, justify="center")
+        template_entry = Snippet_Entry(self, textvariable = tk.StringVar(), state="readonly", width=40, bd=1, justify="center")
         template_entry.bind('<FocusIn>', self.on_template_focusIn)
         template_entry.bind('<FocusOut>', self.on_template_focusOut)
         template_entry.grid(row=row, column=1)
@@ -94,7 +114,9 @@ class Snippets_LabelFrame(tk.LabelFrame):
     def on_abbreviation_focusIn(self, event):
         abbreviation_entry = event.widget
         abbreviation_entry.configure(state="normal")
-        self.app.unregister_snippet(abbreviation_entry.get())
+        index = self.abbreviation_entries.index(abbreviation_entry)
+
+        self.app.unregister_snippet(abbreviation_entry.get(), self.template_entries[index].get())
         self.app.on_abbreviation_focusIn(entry=abbreviation_entry)
 
     def on_abbreviation_focusOut(self, event):
@@ -113,7 +135,7 @@ class Snippets_LabelFrame(tk.LabelFrame):
         template_entry.configure(state="normal")
         index = self.template_entries.index(template_entry)
 
-        self.app.unregister_snippet(self.abbreviation_entries[index].get())
+        self.app.unregister_snippet(self.abbreviation_entries[index].get(), template_entry.get())
         self.app.on_template_focusIn(entry=template_entry)
 
     def on_template_focusOut(self, event):
@@ -128,24 +150,25 @@ class Snippets_LabelFrame(tk.LabelFrame):
         self.app.on_snippet_entry_focusOut()
 
     def display_snippets(self, snippets):
+        """ Clear old entries and create new with snippets"""
+
+        self.clear_frame()
+
         for i, abbreviation in enumerate(snippets):
-            self.create_snippet_widgets()
+            self.add_snippet_widgets()
             self.abbreviation_entries[i].textvariable.set(abbreviation)
             template = snippets[abbreviation]
             self.template_entries[i].textvariable.set(template)  
-
-    def register_all_snippets_from_entries(self):
+    
+    def clear_frame(self):
         for i in range(len(self.abbreviation_entries)):
-            abbreviation = self.abbreviation_entries[i].get()
-            template = self.template_entries[i].get()
-            
-            self.app.register_snippet(abbreviation, template)
+            self.remove_snippet_widgets()
 
 class LayoutManager_Frame(tk.Frame):
-    def __init__(self, master, snippets_frame, cfg={}, **kw):
+    def __init__(self, master, snippets_manager, cfg={}, **kw):
         tk.Frame.__init__(self, master, cfg, **kw)
 
-        self.snippets_frame = snippets_frame
+        self.snippets_manager = snippets_manager
         self.focused_abbreviation_entry = None
         self.focused_template_entry = None
 
@@ -157,7 +180,31 @@ class LayoutManager_Frame(tk.Frame):
         self.add_button.configure(image=self.add_button.image)
         self.add_button.grid(row=0, column=0)
 
+        self.remove_button = tk.Button(self, command=self.remove_snippet_widgets)
+        self.remove_button.image = tk.PhotoImage(file=os.path.join("images", "remove.png"))
+        self.remove_button.configure(image=self.remove_button.image)
+        self.remove_button.grid(row=0, column=1)
+
+        self.up_button = tk.Button(self, command=self.move_up_snippet_widgets)
+        self.up_button.image = tk.PhotoImage(file=os.path.join("images", "Up.png"))
+        self.up_button.configure(image=self.up_button.image)
+        self.up_button.grid(row=0, column=2)
+
+        self.down_button = tk.Button(self, command=self.move_down_snippet_widgets)
+        self.down_button.image = tk.PhotoImage(file=os.path.join("images", "Down.png"))
+        self.down_button.configure(image=self.down_button.image)
+        self.down_button.grid(row=0, column=3)
+
     def add_snippet_widgets(self):
+        self.snippets_manager.add_snippet_widgets()
+    
+    def remove_snippet_widgets(self):
+        self.snippets_manager.remove_snippet_widgets()
+
+    def move_up_snippet_widgets(self):
+        pass
+
+    def move_down_snippet_widgets(self):
         pass
     
     def on_abbreviation_focusIn(self, entry):

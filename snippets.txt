@@ -12,5 +12,5 @@ mbr : Moved to bucket Roksolana.
 chsa : Cheaper supplier is available on ALI. 
 chsna : Cheaper supplier is not available on ALI. 
 acof : Added comment to order flow 
-acpf : Added comment to product flow 
+acpf : Added comment to product flow
 mbpc : Moved to Price Check. / Date of expiration 
