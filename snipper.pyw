@@ -1,16 +1,22 @@
 import tkinter as tk
+import os
+
 import keyboard
 
 
 class Snipper(object):
     def __init__(self):
+        self.file_path = "snippets.txt" 
         self.snippets_frame = None
 
         self.create_widgets()
 
     def create_widgets(self):
-        self.snippets_frame = Snippets_Frame(master=self, application=self)
-        self.snippets_frame.grid(row=0, column=0)
+        self.snippets_manager = Snippets_LabelFrame(master=self, application=self)
+        self.snippets_manager.grid(row=0, column=0)
+
+        self.layout_manager = LayoutManager_Frame(master=self, application=self)
+        self.layout_manager.grid(row=1, column=0)
 
     def get_snippets_from_file(self, path : str) -> dict:
         snippets = {}
@@ -38,14 +44,29 @@ class Snipper(object):
     def unregister_all_snippets(self):
         keyboard.unhook_all()
 
-class Snippets_Frame(tk.LabelFrame):
+    def on_abbreviation_focusIn(self, entry):
+        self.layout_manager.on_abbreviation_focusIn(entry)
+
+    def on_template_focusIn(self, entry):
+        self.layout_manager.on_template_focusIn(entry)    
+    
+    def on_snippet_entry_focusOut(self):
+        self.layout_manager.on_snippet_entry_focusOut()
+
+    def get_abbreviation_entries(self) -> list:
+        return self.snippets_manager.abbreviation_entries
+
+    def get_template_entries(self) -> list:
+        return self.snippets_manager.template_entries
+
+class Snippets_LabelFrame(tk.LabelFrame):
     def __init__(self, master, application, cfg={}, **kw):
         tk.LabelFrame.__init__(self, master, cfg, **kw)
         self.app = application
         self.abbreviation_entries = []
         self.template_entries = []
     
-        self.display_snippets(snippets=self.app.get_snippets_from_file(path="snippets.txt"))
+        self.display_snippets(snippets=self.app.get_snippets_from_file(path=self.app.file_path))
         self.register_all_snippets_from_entries()
     
     def create_snippet_widgets(self):
@@ -74,6 +95,7 @@ class Snippets_Frame(tk.LabelFrame):
         abbreviation_entry = event.widget
         abbreviation_entry.configure(state="normal")
         self.app.unregister_snippet(abbreviation_entry.get())
+        self.app.on_abbreviation_focusIn(entry=abbreviation_entry)
 
     def on_abbreviation_focusOut(self, event):
         abbreviation_entry = event.widget
@@ -84,6 +106,7 @@ class Snippets_Frame(tk.LabelFrame):
         template = self.template_entries[index].get()
 
         self.app.register_snippet(abbreviation, template)
+        self.app.on_snippet_entry_focusOut()
 
     def on_template_focusIn(self, event):
         template_entry = event.widget
@@ -91,6 +114,7 @@ class Snippets_Frame(tk.LabelFrame):
         index = self.template_entries.index(template_entry)
 
         self.app.unregister_snippet(self.abbreviation_entries[index].get())
+        self.app.on_template_focusIn(entry=template_entry)
 
     def on_template_focusOut(self, event):
         template_entry = event.widget
@@ -101,6 +125,7 @@ class Snippets_Frame(tk.LabelFrame):
         template = template_entry.get()
 
         self.app.register_snippet(abbreviation, template)
+        self.app.on_snippet_entry_focusOut()
 
     def display_snippets(self, snippets):
         for i, abbreviation in enumerate(snippets):
@@ -116,11 +141,41 @@ class Snippets_Frame(tk.LabelFrame):
             
             self.app.register_snippet(abbreviation, template)
 
+class LayoutManager_Frame(tk.Frame):
+    def __init__(self, master, snippets_frame, cfg={}, **kw):
+        tk.Frame.__init__(self, master, cfg, **kw)
 
+        self.snippets_frame = snippets_frame
+        self.focused_abbreviation_entry = None
+        self.focused_template_entry = None
+
+        self.create_widgets()
+    
+    def create_widgets(self):       
+        self.add_button = tk.Button(self, command=self.add_snippet_widgets)
+        self.add_button.image = tk.PhotoImage(file=os.path.join("images", "Add.png"))
+        self.add_button.configure(image=self.add_button.image)
+        self.add_button.grid(row=0, column=0)
+
+    def add_snippet_widgets(self):
+        pass
+    
+    def on_abbreviation_focusIn(self, entry):
+        self.focused_abbreviation_entry = entry
+
+    def on_template_focusIn(self, entry):
+        self.focused_template_entry = entry
+
+    def on_snippet_entry_focusOut(self):
+        self.focused_abbreviation_entry = None
+        self.focused_template_entry = None
+    
 class Snipper_TopLevel(Snipper, tk.Toplevel):
     def __init__(self, master, cnf={}, **kw):
         tk.Toplevel.__init__(self, master, cnf, **kw)
         Snipper.__init__(self)
+
+        self.resizable(False, False)
 
 class Snipper_Frame(Snipper, tk.Frame):
     def __init__(self, master, cnf={}, **kw):
@@ -145,6 +200,8 @@ class Snippet_Entry(tk.Entry):
 
 if __name__ == "__main__":
     root = tk.Tk()
+    root.resizable(False, False)
+
     frame = Snipper_Frame(root)
     frame.grid()
     root.mainloop()
