@@ -1,12 +1,13 @@
 import tkinter as tk
-import os
+from tkinter import filedialog
+import os, sys
 
 import keyboard
 
 
 class Snipper(object):
     def __init__(self):
-        self.file_path = "snippets.txt" 
+        self.file_name = "snippets.txt" 
         self.snippets_manager = None
 
         self.create_widgets()
@@ -23,41 +24,44 @@ class Snipper(object):
     def create_menubar(self, master=None, **options) -> tk.Menu:
         menubar = tk.Menu()
         filemenu = tk.Menu(menubar, tearoff=0)
-        filemenu.add_command(label="Open")
-        filemenu.add_command(label="Open recent")
-        filemenu.add_command(label="Save")
-        filemenu.add_command(label="Save as...")
+        filemenu.add_command(label="Open...", command=self.open_file)
+        filemenu.add_command(label="Open recent", command=self.open_recent_file)
+        filemenu.add_command(label="Save", command=self.save_file)
+        filemenu.add_command(label="Save as...", command=self.save_as_file)
         menubar.add_cascade(label="File", menu=filemenu)
 
         return menubar
 
-    def get_snippets_from_file(self, path : str) -> dict:
+    def open_file(self):
+        file_description = filedialog.askopenfile(initialdir=sys.path[0], title="Select file", filetypes=(("txt files", "*.txt"), ))
+        file_name = file_description.name
+        snippets = self.get_snippets_from_file(file_name=file_name)
+        self.snippets_manager.display_snippets(snippets=snippets)
+        self.register_snippets(snippets=snippets)
+
+    def open_recent_file(self):
+        pass
+
+    def save_file(self):
+        pass
+
+    def save_as_file(self):
+        pass
+
+    def get_snippets_from_file(self, file_name : str) -> dict:
         snippets = {}
-        try:
-            f = open(path, "r")
-        except Exception as e:
-            print(e.__traceback__)
-            return
-
-        lines = [line.split(" : ") for line in f.readlines() if not line.isspace()]
-        for snippet in lines:
-            snippets[snippet[0]] = snippet[1].strip("\n")   
-
-        f.close()
-        return snippets  
+        with open(file_name, "r") as f:
+            lines = [line.split(" : ") for line in f.readlines() if not line.isspace()]
+            for snippet in lines:
+                snippets[snippet[0]] = snippet[1].strip("\n")  
+        return snippets 
 
     def register_snippet(self, abbreviation, template):
         if abbreviation and template:
             keyboard.add_abbreviation(abbreviation, template)
 
-    def register_all_snippets_from_entries(self):
-        abbreviation_entries = self.get_abbreviation_entries()
-        template_entries = self.get_template_entries()
-
-        for i in range(len(abbreviation_entries)):
-            abbreviation = abbreviation_entries[i].get()
-            template = template_entries[i].get()
-            
+    def register_snippets(self, snippets):
+        for abbreviation, template in snippets.items():          
             self.register_snippet(abbreviation, template)
 
     def unregister_snippet(self, abbreviation, template):
