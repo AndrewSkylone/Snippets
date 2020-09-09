@@ -7,14 +7,12 @@ import keyboard
 
 class Snipper(object):
     def __init__(self):
-        self.file_name = "snippets.txt" 
+        self.file_path = None
         self.snippets_manager = None
 
         self.create_widgets()
 
     def create_widgets(self):
-        self.create_menubar()
-
         self.snippets_manager = Snippets_LabelFrame(master=self, application=self)
         self.snippets_manager.grid(row=0, column=0)
 
@@ -27,30 +25,44 @@ class Snipper(object):
         filemenu.add_command(label="Open...", command=self.open_file)
         filemenu.add_command(label="Open recent", command=self.open_recent_file)
         filemenu.add_command(label="Save", command=self.save_file)
-        filemenu.add_command(label="Save as...", command=self.save_as_file)
+        filemenu.add_command(label="Save as...", command=self.save_file_as)
         menubar.add_cascade(label="File", menu=filemenu)
 
         return menubar
 
     def open_file(self):
-        file_description = filedialog.askopenfile(initialdir=sys.path[0], title="Select file", filetypes=(("txt files", "*.txt"), ))
-        file_name = file_description.name
-        snippets = self.get_snippets_from_file(file_name=file_name)
+        self.file_path = filedialog.askopenfilename(initialdir=sys.path[0], title="Select file", filetypes=(("txt files", "*.txt"), ))
+        if not self.file_path:
+            return        
+
+        snippets = self.get_snippets_from_file(file_path=self.file_path)
         self.snippets_manager.display_snippets(snippets=snippets)
         self.register_snippets(snippets=snippets)
+
+        filename = os.path.basename(self.file_path)
+        self.set_title(title=filename)
 
     def open_recent_file(self):
         pass
 
     def save_file(self):
-        pass
+        if not self.file_path:
+            self.save_file_as()
 
-    def save_as_file(self):
-        pass
+        abbreviations = [entry.get() for entry in self.get_abbreviation_entries()]
+        templates = [entry.get() for entry in self.get_template_entries()]
 
-    def get_snippets_from_file(self, file_name : str) -> dict:
+        with open(self.file_path, "w") as f:
+            for i in range(len(abbreviations)):
+                f.write(abbreviations[i] + " : " + templates[i] + "\n")
+
+    def save_file_as(self):
+        self.file_path = filedialog.asksaveasfilename(defaultextension='.txt', filetypes=[("txt files", '*.txt')], initialdir=sys.path[0])
+        self.save_file()
+
+    def get_snippets_from_file(self, file_path : str) -> dict:
         snippets = {}
-        with open(file_name, "r") as f:
+        with open(file_path, "r") as f:
             lines = [line.split(" : ") for line in f.readlines() if not line.isspace()]
             for snippet in lines:
                 snippets[snippet[0]] = snippet[1].strip("\n")  
@@ -85,11 +97,15 @@ class Snipper(object):
 
     def get_template_entries(self) -> list:
         return self.snippets_manager.template_entries
+    
+    def set_title(self, title):
+        raise NotImplementedError
 
 class Snippets_LabelFrame(tk.LabelFrame):
     def __init__(self, master, application, cfg={}, **kw):
         tk.LabelFrame.__init__(self, master, cfg, **kw)
         self.app = application
+        self.__listeners = []
         self.abbreviation_entries = []
         self.template_entries = []
 
@@ -165,6 +181,13 @@ class Snippets_LabelFrame(tk.LabelFrame):
 
         self.app.register_snippet(abbreviation, template)
         self.app.on_snippet_entry_focusOut()
+    
+    def get_snippet_index_by_entry(self, entry) -> int:
+        if entry in self.abbreviation_entries:
+            return self.abbreviation_entries.index(entry)
+
+        if entry in self.template_entries:
+            return self.template_entries.index(entry)
 
     def display_snippets(self, snippets):
         """ Clear old entries and create new with snippets"""
@@ -239,16 +262,22 @@ class Snipper_TopLevel(Snipper, tk.Toplevel):
         tk.Toplevel.__init__(self, master, cnf, **kw)
         Snipper.__init__(self)
 
-        self.config(menu=self.create_menubar())
         self.resizable(False, False)
+        self.config(menu=self.create_menubar())
+            
+    def set_title(self, title):
+        self.title(title)
 
 class Snipper_Frame(Snipper, tk.Frame):
     def __init__(self, master, cnf={}, **kw):
         tk.Frame.__init__(self, master, cnf, **kw)
         Snipper.__init__(self)
 
+        self.master.resizable(False, False)
         master.config(menu=self.create_menubar())
-        master.resizable(False, False)
+   
+    def set_title(self, title):
+        self.master.title(title)
 
 class Snippet_Entry(tk.Entry):
     def __init__(self, master, cfg={}, **kw):
@@ -268,7 +297,6 @@ class Snippet_Entry(tk.Entry):
 
 if __name__ == "__main__":
     root = tk.Tk()
-
     frame = Snipper_Frame(root)
     frame.grid()
     root.mainloop()
