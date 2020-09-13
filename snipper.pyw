@@ -100,13 +100,13 @@ class Snippets_LabelFrame(tk.LabelFrame):
         self.abbreviation_entries = []
         self.template_entries = []
 
-        self.add_snippet_widgets()
+        self.insert_snippet_widgets(pos=len(self.abbreviation_entries))
         
-    def add_snippet_widgets(self):
-        self.create_abbreviation_entry()
-        self.create_template_entry()
+    def insert_snippet_widgets(self, pos):
+        self.create_abbreviation_entry(pos=pos)
+        self.create_template_entry(pos=pos)
     
-    def remove_snippet_widgets(self):
+    def remove_snippet_widgets(self, pos):
         if not self.abbreviation_entries or not self.template_entries:
             return
 
@@ -117,23 +117,19 @@ class Snippets_LabelFrame(tk.LabelFrame):
         abbreviation_entry.destroy()
         template_entry.destroy()
     
-    def create_abbreviation_entry(self):
-        row = len(self.abbreviation_entries)
-
+    def create_abbreviation_entry(self, pos : int):
         abbreviation_entry = Snippet_Entry(self, textvariable = tk.StringVar(), state="readonly", width=7, bd=1, justify="center")
         abbreviation_entry.bind('<FocusIn>', self.on_abbreviation_focusIn)
         abbreviation_entry.bind('<FocusOut>', self.on_abbreviation_focusOut)
-        abbreviation_entry.grid(row=row, column=0, pady=1)
-        self.abbreviation_entries.append(abbreviation_entry)
+        abbreviation_entry.grid(row=pos, column=0, pady=1)
+        self.abbreviation_entries.insert(pos, abbreviation_entry)
 
-    def create_template_entry(self):
-        row = len(self.template_entries)
-
+    def create_template_entry(self, pos : int):
         template_entry = Snippet_Entry(self, textvariable = tk.StringVar(), state="readonly", width=40, bd=1, justify="center")
         template_entry.bind('<FocusIn>', self.on_template_focusIn)
         template_entry.bind('<FocusOut>', self.on_template_focusOut)
-        template_entry.grid(row=row, column=1)
-        self.template_entries.append(template_entry)
+        template_entry.grid(row=pos, column=1)
+        self.template_entries.insert(pos, template_entry)
     
     def on_abbreviation_focusIn(self, event):
         abbreviation_entry = event.widget
@@ -195,27 +191,39 @@ class Snippets_LabelFrame(tk.LabelFrame):
         self.clear_frame()
 
         for i, abbreviation in enumerate(snippets):
-            self.add_snippet_widgets()
+            self.insert_snippet_widgets(pos=len(self.abbreviation_entries))
             self.abbreviation_entries[i].textvariable.set(abbreviation)
             template = snippets[abbreviation]
             self.template_entries[i].textvariable.set(template)  
     
     def clear_frame(self):
         for i in range(len(self.abbreviation_entries)):
-            self.remove_snippet_widgets()
+            self.remove_snippet_widgets(pos=len(self.abbreviation_entries))
+        
+    def update_entries_grid(self):
+        """ Update all snippets entries row position by their index """
+
+        for index in range(len(self.abbreviation_entries)):
+            column = entry.grid_info()["column"]
+            entry.grid(row=index, column=column)
+        
+        for index, entry in enumerate(self.template_entries):
+            column = entry.grid_info()["column"]
+            entry.grid(row=index, column=column)
+
 
 class LayoutManager_Frame(tk.Frame):
     def __init__(self, master, snippets_frame, cfg={}, **kw):
         tk.Frame.__init__(self, master, cfg, **kw)
 
         self.snippets_frame = snippets_frame
-        self.snippet_index = None
+        self.snippet_index = 0
 
         self.create_widgets()
         self.snippets_frame.subscribe(self)
     
     def create_widgets(self):       
-        self.add_button = tk.Button(self, command=self.add_snippet_widgets)
+        self.add_button = tk.Button(self, command=self.insert_snippet_widgets)
         self.add_button.image = tk.PhotoImage(file=os.path.join("images", "Add.png"))
         self.add_button.configure(image=self.add_button.image)
         self.add_button.grid(row=0, column=0)
@@ -235,8 +243,8 @@ class LayoutManager_Frame(tk.Frame):
         self.down_button.configure(image=self.down_button.image)
         self.down_button.grid(row=0, column=3)
 
-    def add_snippet_widgets(self):
-        self.snippets_frame.add_snippet_widgets()
+    def insert_snippet_widgets(self):
+        self.snippets_frame.insert_snippet_widgets(pos=self.snippet_index)
     
     def remove_snippet_widgets(self):
         self.snippets_frame.remove_snippet_widgets()
@@ -251,7 +259,7 @@ class LayoutManager_Frame(tk.Frame):
         if str(event.type) == "FocusIn":
             self.up_button.config(state=tk.NORMAL)
             self.down_button.config(state=tk.NORMAL)
-            self.snippet_index = self.snippets_frame.get_snippet_index_by_entry(entry=event.entry)
+            self.snippet_index = self.snippets_frame.get_snippet_index_by_entry(entry=event.widget)
 
         elif str(event.type) == "FocusOut":
             self.up_button.config(state=tk.DISABLED)
