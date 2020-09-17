@@ -25,6 +25,7 @@ class Snipper(object):
     def create_menubar(self, master=None, **options) -> tk.Menu:
         menubar = tk.Menu()
         filemenu = tk.Menu(menubar, tearoff=0)
+        filemenu.add_command(label="New", command=self.reset)
         filemenu.add_command(label="Open...", command=self.open_file)
         filemenu.add_command(label="Open recent", command=self.open_recent_file)
         filemenu.add_command(label="Save", command=self.save_file)
@@ -34,13 +35,16 @@ class Snipper(object):
         return menubar
 
     def open_file(self):
-        self.file_path.set(filedialog.askopenfilename(initialdir=sys.path[0], title="Select file", filetypes=(("txt files", "*.txt"), )))
-        if not self.file_path.get():
-            return        
+        file_path = filedialog.askopenfilename(initialdir=sys.path[0], title="Select file", filetypes=(("txt files", "*.txt"), ))
+        if not file_path:
+            return  
 
-        snippets = self.get_snippets_from_file(file_path=self.file_path.get())
+        self.reset()
+
+        snippets = self.get_snippets_from_file(file_path=file_path)
         self.snippets_frame.display_snippets(snippets=snippets)
         self.register_snippets(snippets=snippets)
+        self.file_path.set(file_path)
 
     def open_recent_file(self):
         pass
@@ -48,6 +52,7 @@ class Snipper(object):
     def save_file(self):
         if not self.file_path.get():
             self.save_file_as()
+            return
 
         abbreviations = [entry.get() for entry in self.get_abbreviation_entries()]
         templates = [entry.get() for entry in self.get_template_entries()]
@@ -86,6 +91,12 @@ class Snipper(object):
 
     def get_template_entries(self) -> list:
         return self.snippets_frame.template_entries
+    
+    def reset(self):
+        self.file_path.set("")
+
+        self.snippets_frame.reset()
+        self.layout_manager.reset()
     
     def set_filename_title(self, *args):
         filename = os.path.basename(self.file_path.get())
@@ -209,7 +220,7 @@ class Snippets_LabelFrame(tk.LabelFrame):
     def display_snippets(self, snippets):
         """ Clear old entries and create new with snippets"""
 
-        self.clear_frame()
+        self.reset()
 
         for i, abbreviation in enumerate(snippets):
             self.insert_snippet_widgets(pos=len(self.abbreviation_entries))
@@ -217,9 +228,9 @@ class Snippets_LabelFrame(tk.LabelFrame):
             template = snippets[abbreviation]
             self.template_entries[i].textvariable.set(template)  
     
-    def clear_frame(self):
+    def reset(self):
         for i in range(len(self.abbreviation_entries)):
-            self.remove_snippet_widgets(pos=len(self.abbreviation_entries)-1)
+            self.remove_snippet_widgets(pos=len(self.abbreviation_entries) - 1)
         
     def update_entries_grid(self):
         """ Update all snippets entries row position by their index """
@@ -312,6 +323,9 @@ class LayoutManager_Frame(tk.Frame):
         self.up_button.config(state=tk.DISABLED)
         self.down_button.config(state=tk.DISABLED)
         self.snippet_index = len(self.snippets_frame.abbreviation_entries) - 1
+    
+    def reset(self):
+        self.snippet_index = None
 
 class Snipper_TopLevel(Snipper, tk.Toplevel):
     def __init__(self, master, cnf={}, **kw):
