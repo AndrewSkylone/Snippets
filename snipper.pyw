@@ -252,22 +252,22 @@ class LayoutManager_Frame(tk.Frame):
     
     def create_widgets(self):       
         self.add_button = tk.Button(self, command=self.insert_snippet_widgets)
-        self.add_button.image = tk.PhotoImage(file=os.path.join("images", "Add.png"))
+        self.add_button.image = tk.PhotoImage(file=self.get_image_path(name="Add.png"))
         self.add_button.configure(image=self.add_button.image)
         self.add_button.grid(row=0, column=0)
 
         self.remove_button = tk.Button(self, command=self.remove_snippet_widgets)
-        self.remove_button.image = tk.PhotoImage(file=os.path.join("images", "remove.png"))
+        self.remove_button.image = tk.PhotoImage(file=self.get_image_path(name="remove.png"))
         self.remove_button.configure(image=self.remove_button.image)
         self.remove_button.grid(row=0, column=1)
 
         self.up_button = tk.Button(self, state=tk.DISABLED, command=self.move_up_snippet_widgets)
-        self.up_button.image = tk.PhotoImage(file=os.path.join("images", "Up.png"))
+        self.up_button.image = tk.PhotoImage(file=self.get_image_path(name="Up.png"))
         self.up_button.configure(image=self.up_button.image)
         self.up_button.grid(row=0, column=2)
 
         self.down_button = tk.Button(self, state=tk.DISABLED, command=self.move_down_snippet_widgets)
-        self.down_button.image = tk.PhotoImage(file=os.path.join("images", "Down.png"))
+        self.down_button.image = tk.PhotoImage(file=self.get_image_path(name="Down.png"))
         self.down_button.configure(image=self.down_button.image)
         self.down_button.grid(row=0, column=3)
 
@@ -323,6 +323,9 @@ class LayoutManager_Frame(tk.Frame):
         self.up_button.config(state=tk.DISABLED)
         self.down_button.config(state=tk.DISABLED)
         self.snippet_index = len(self.snippets_frame.abbreviation_entries) - 1
+    
+    def get_image_path(self, name) -> str:
+        return os.path.join(os.path.dirname(__file__), "images", name)
     
     def reset(self):
         self.snippet_index = None
