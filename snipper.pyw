@@ -35,7 +35,7 @@ class Snipper(object):
         return menubar
 
     def open_file(self):
-        file_path = filedialog.askopenfilename(initialdir=sys.path[0], title="Select file", filetypes=(("txt files", "*.txt"), ))
+        file_path = filedialog.askopenfilename(initialdir=os.path.dirname(__file__), title="Select file", filetypes=(("txt files", "*.txt"), ))
         if not file_path:
             return  
 
@@ -62,7 +62,7 @@ class Snipper(object):
                 f.write(abbreviations[i] + " : " + templates[i] + "\n")
 
     def save_file_as(self):
-        self.file_path.set(filedialog.asksaveasfilename(defaultextension='.txt', filetypes=[("txt files", '*.txt')], initialdir=sys.path[0]))
+        self.file_path.set(filedialog.asksaveasfilename(defaultextension='.txt', filetypes=[("txt files", '*.txt')], initialdir=os.path.dirname(__file__)))
         if self.file_path.get():
             self.save_file()
 
@@ -339,7 +339,7 @@ class Snipper_TopLevel(Snipper, tk.Toplevel):
         self.config(menu=self.create_menubar())
             
     def title(self, title):
-        tk.Toplevel.title(title)
+        tk.Toplevel.title(self, title)
 
 class Snipper_Frame(Snipper, tk.Frame):
     def __init__(self, master, cnf={}, **kw):
