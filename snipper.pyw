@@ -166,7 +166,6 @@ class Snippets_LabelFrame(tk.LabelFrame):
     def on_abbreviation_focusIn(self, event):
         abbreviation_entry = event.widget
         abbreviation_entry.configure(state="normal")
-        index = self.abbreviation_entries.index(abbreviation_entry)
 
         self.app.unregister_snippet(abbreviation_entry.get())
         self.notify_listeners(event=event)
